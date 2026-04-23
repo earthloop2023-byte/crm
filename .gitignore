@@ -1,0 +1,45 @@
+# dependencies
+node_modules/
+
+# build outputs
+dist/
+*.tsbuildinfo
+
+# environment and secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# logs
+*.log
+*.out
+*.err
+*.out.log
+*.err.log
+
+# local runtime markers
+.handoff_ts
+.release_ts
+.release_ts_final
+
+# local artifacts
+attached_assets/
+backups/
+deliverables/
+tmp/
+dist-*.tgz
+crm-site1.tgz
+runtime-local.*
+tmp*
+.dev*
+.start*
+client/temp-public/
+deploy/.state/
+*.bak
+*.bak_*
+*.before_*
+
+# OS/editor
+.DS_Store
+Thumbs.db

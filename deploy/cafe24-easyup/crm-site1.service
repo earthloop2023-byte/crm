@@ -1,0 +1,19 @@
+[Unit]
+Description=CRM Site1 Node.js Service
+After=network.target
+
+[Service]
+Type=simple
+User=crm
+Group=crm
+WorkingDirectory=/opt/crm/site1
+EnvironmentFile=/opt/crm/site1/.env.production
+ExecStart=/usr/bin/node /opt/crm/site1/dist/index.js
+Restart=always
+RestartSec=3
+StandardOutput=append:/var/log/crm-site1.out.log
+StandardError=append:/var/log/crm-site1.err.log
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target
