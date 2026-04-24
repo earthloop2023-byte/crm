@@ -6510,6 +6510,8 @@ export async function registerRoutes(
 
       const getAnalyticsDealLines = (deal: typeof filteredDeals[number]) =>
         Math.max(Number(deal.lineCount) || 0, 0);
+      const getAnalyticsDealRemainingLines = (deal: typeof filteredDeals[number]) =>
+        Math.max((Number(deal.lineCount) || 0) - (Number(deal.cancelledLineCount) || 0), 0);
       const getChurnedAnalyticsDealLines = (deal: typeof filteredDeals[number]) =>
         Math.max(Number(deal.cancelledLineCount) || 0, 0);
       const getCustomerDbAlignedStatus = (deal: typeof filteredDeals[number]) => {
@@ -6553,7 +6555,7 @@ export async function registerRoutes(
         (deal) => getChurnedAnalyticsDealLines(deal) > 0,
       );
       const regionalSummary = {
-        totalLineCount: regionalSummarySourceDeals.reduce((sum, deal) => sum + getAnalyticsDealLines(deal), 0),
+        totalLineCount: regionalSummarySourceDeals.reduce((sum, deal) => sum + getAnalyticsDealRemainingLines(deal), 0),
         newDeals: regionalInboundDealsForSummary.length,
         activeDeals: regionalOpenedDealsForSummary.length,
         changedDeals: regionalChangedDealsForSummary.length,

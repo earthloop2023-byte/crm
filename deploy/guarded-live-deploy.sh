@@ -47,12 +47,14 @@ fi
 
 rm -rf "$PREV_DIR"
 if [[ -d "$APP_DIR/dist" ]]; then
+  sudo chown -R "$USER":"$USER" "$APP_DIR/dist" 2>/dev/null || true
+  sudo chmod -R u+rwX "$APP_DIR/dist" 2>/dev/null || true
   cp -a "$APP_DIR/dist" "$PREV_DIR"
   tar -czf "$BACKUP_FILE" -C "$APP_DIR" dist
 fi
 
 cp "$ARCHIVE_PATH" "$RELEASE_FILE"
-rm -rf "$APP_DIR/dist"
+sudo rm -rf "$APP_DIR/dist"
 mkdir -p "$APP_DIR/dist"
 tar -xzf "$ARCHIVE_PATH" -C "$APP_DIR"
 
