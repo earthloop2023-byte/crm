@@ -1053,11 +1053,8 @@ function getDepositMatchContractAmount(contract: {
     String(item.productName || "").trim(),
   );
   if (items.length > 0) {
-    return items.reduce((sum, item) => {
-      const supplyAmount = Math.max(0, Number(item.unitPrice) || 0) * getDepositMatchItemQuantity(item);
-      const vatAmount = normalizeDepositMatchVatType(item.vatType) === "포함" ? Math.round(supplyAmount * 0.1) : 0;
-      return sum + supplyAmount + vatAmount;
-    }, 0);
+    const fallbackIncluded = parseInvoiceIssuedFlag(contract.invoiceIssued) === true;
+    return items.reduce((sum, item) => sum + getDepositMatchItemGrossAmount(item, fallbackIncluded), 0);
   }
 
   const baseAmount = Math.max(0, Number(contract.cost) || 0);
@@ -1091,10 +1088,10 @@ function buildPaymentPayloadFromContract(contract: {
   };
 }
 
-function vatTypeFromInvoiceIssued(value: string | null | undefined): "부가별도" | "부가포함" | null {
+function vatTypeFromInvoiceIssued(value: string | null | undefined): "부가세별도" | "부가세포함" | null {
   const issued = parseInvoiceIssuedFlag(value);
   if (issued === null) return null;
-  return issued ? "부가별도" : "부가포함";
+  return issued ? "부가세포함" : "부가세별도";
 }
 
 const PAYMENT_METHOD_BEFORE_DEPOSIT = "입금 전";
@@ -7722,6 +7719,52 @@ export async function registerRoutes(
 
   const bulkUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
+  const hasBulkImportCellValue = (value: unknown) =>
+    value !== undefined && value !== null && String(value).trim() !== "";
+
+  const parseBulkImportNumber = (value: unknown, fallback = 0) => {
+    if (typeof value === "number") {
+      return Number.isFinite(value) ? value : fallback;
+    }
+    const raw = String(value ?? "").trim();
+    if (!raw) return fallback;
+    const isParenthesizedNegative = /^\(.*\)$/.test(raw);
+    const normalized = raw.replace(/,/g, "").replace(/[₩원\s]/g, "");
+    const match = normalized.match(/[+-]?\d+(?:\.\d+)?/);
+    if (!match) return fallback;
+    const parsed = Number(match[0]);
+    if (!Number.isFinite(parsed)) return fallback;
+    return isParenthesizedNegative ? -Math.abs(parsed) : parsed;
+  };
+
+  const parseBulkImportInteger = (value: unknown, fallback = 0) =>
+    Math.round(parseBulkImportNumber(value, fallback));
+
+  const getBulkImportMappedRawValue = (
+    rawData: unknown,
+    mappingConfig: Record<string, string>,
+    targetField: string,
+  ) => {
+    let rawObject: Record<string, unknown>;
+    try {
+      rawObject = typeof rawData === "string" ? JSON.parse(rawData || "{}") : {};
+    } catch {
+      rawObject = {};
+    }
+
+    for (const [header, value] of Object.entries(rawObject)) {
+      const normalizedHeader = String(header || "").trim();
+      if (!normalizedHeader) continue;
+      if (mappingConfig[normalizedHeader] === targetField) return value;
+      for (const [mappedHeader, field] of Object.entries(mappingConfig)) {
+        if (field === targetField && normalizedHeader.startsWith(mappedHeader)) {
+          return value;
+        }
+      }
+    }
+    return undefined;
+  };
+
   app.post("/api/bulk-import/upload", autoLoginDev, requireAuth, async (req, res, next) => {
     try {
       const currentUser = await storage.getUser(req.session.userId!);
@@ -7852,6 +7895,8 @@ export async function registerRoutes(
           }
         }
       });
+      const costHeader = headers.find((_, idx) => headerFieldMap[idx] === "cost") || "";
+      const costColumnIsSupplyAmount = sheetType === "바이럴" || costHeader.includes("공급가");
 
       const parseExcelDate = (value: any, fallbackDate: Date | null = null): Date | null => {
         const normalizeDateOnly = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -7946,18 +7991,46 @@ export async function registerRoutes(
 
         const contractDate = parseExcelDate(mapped.contractDate, currentContractDate);
         if (contractDate) currentContractDate = contractDate;
-        const addQuantity = mapped.addQuantity ? Math.round(Number(mapped.addQuantity) || 0) : 0;
-        const extendQuantity = mapped.extendQuantity ? Math.round(Number(mapped.extendQuantity) || 0) : 0;
+        const addQuantity = Math.max(0, parseBulkImportInteger(mapped.addQuantity, 0));
+        const extendQuantity = Math.max(0, parseBulkImportInteger(mapped.extendQuantity, 0));
         const inferredQuantity = addQuantity + extendQuantity;
         const quantity =
-          mapped.quantity !== undefined && mapped.quantity !== null && mapped.quantity !== ""
-            ? Math.round(Number(mapped.quantity) || 0)
+          hasBulkImportCellValue(mapped.quantity)
+            ? parseBulkImportInteger(mapped.quantity, 0)
             : inferredQuantity > 0
               ? inferredQuantity
               : 1;
         const paymentConfirmed = mapped.paymentConfirmed ? String(mapped.paymentConfirmed) : null;
         const disbursementStatusFromSheet = mapped.disbursementStatus ? String(mapped.disbursementStatus) : null;
         const disbursementStatus = disbursementStatusFromSheet || paymentConfirmed;
+        const unitPrice = parseBulkImportInteger(mapped.unitPrice, 0);
+        const days = Math.max(0, parseBulkImportInteger(mapped.days, 0));
+        const cost = parseBulkImportInteger(mapped.cost, 0);
+        const workCost = Math.max(0, parseBulkImportInteger(mapped.workCost, 0));
+        const explicitSupplyAmount = hasBulkImportCellValue(mapped.supplyAmount)
+          ? parseBulkImportInteger(mapped.supplyAmount, 0)
+          : null;
+        const explicitVatAmount = hasBulkImportCellValue(mapped.vatAmount)
+          ? parseBulkImportInteger(mapped.vatAmount, 0)
+          : null;
+        const invoiceIssuedFlag = parseInvoiceIssuedFlag(mapped.invoiceIssued ? String(mapped.invoiceIssued) : null);
+        let supplyAmount = explicitSupplyAmount ?? 0;
+        let vatAmount = explicitVatAmount ?? 0;
+        if (explicitSupplyAmount === null && explicitVatAmount === null) {
+          if (cost !== 0) {
+            if (!costColumnIsSupplyAmount && invoiceIssuedFlag === true && cost > 0) {
+              supplyAmount = Math.round(cost / 1.1);
+              vatAmount = cost - supplyAmount;
+            } else {
+              supplyAmount = cost;
+              vatAmount = invoiceIssuedFlag === true ? Math.round(supplyAmount * 0.1) : 0;
+            }
+          } else if (unitPrice !== 0) {
+            supplyAmount = unitPrice * Math.max(1, quantity);
+            vatAmount = invoiceIssuedFlag === true ? Math.round(supplyAmount * 0.1) : 0;
+          }
+        }
+        const previewCost = cost !== 0 ? cost : supplyAmount + vatAmount;
 
         stagingRows.push({
           batchId: "",
@@ -7968,26 +8041,14 @@ export async function registerRoutes(
           userIdentifier: mapped.userIdentifier ? String(mapped.userIdentifier) : null,
           managerName: mapped.managerName ? String(mapped.managerName) : null,
           productName: mapped.productName ? String(mapped.productName) : null,
-          unitPrice: mapped.unitPrice ? Math.round(Number(mapped.unitPrice) || 0) : 0,
-          days: mapped.days ? Math.round(Number(mapped.days) || 0) : 0,
+          unitPrice,
+          days,
           quantity: Math.max(1, quantity),
-          cost: mapped.cost ? Math.round(Number(mapped.cost) || 0) : 0,
-          workCost: mapped.workCost ? Math.round(Number(mapped.workCost) || 0) : 0,
+          cost: previewCost,
+          workCost,
           workerName: mapped.workerName ? String(mapped.workerName) : null,
-          supplyAmount: (() => {
-            const sa = mapped.supplyAmount ? Math.round(Number(mapped.supplyAmount) || 0) : 0;
-            const va = mapped.vatAmount ? Math.round(Number(mapped.vatAmount) || 0) : 0;
-            const c = mapped.cost ? Math.round(Number(mapped.cost) || 0) : 0;
-            if (sa === 0 && va === 0 && c > 0) return Math.round(c / 1.1);
-            return sa;
-          })(),
-          vatAmount: (() => {
-            const sa = mapped.supplyAmount ? Math.round(Number(mapped.supplyAmount) || 0) : 0;
-            const va = mapped.vatAmount ? Math.round(Number(mapped.vatAmount) || 0) : 0;
-            const c = mapped.cost ? Math.round(Number(mapped.cost) || 0) : 0;
-            if (sa === 0 && va === 0 && c > 0) return c - Math.round(c / 1.1);
-            return va;
-          })(),
+          supplyAmount,
+          vatAmount,
           paymentConfirmed,
           invoiceIssued: mapped.invoiceIssued ? String(mapped.invoiceIssued) : null,
           disbursementStatus,
@@ -8080,7 +8141,7 @@ export async function registerRoutes(
       const existingContractKeys = new Set(
         existingContracts.map(c => {
           const dateStr = c.contractDate ? new Date(c.contractDate).toISOString().split("T")[0] : "";
-          return `${c.customerName || ""}|${c.products || ""}|${dateStr}`;
+          return `${c.customerName || ""}|${c.products || ""}|${c.userIdentifier || ""}|${dateStr}`;
         })
       );
 
@@ -8101,7 +8162,7 @@ export async function registerRoutes(
           }
         }
 
-        const dupeKey = `${row.customerName || ""}|${row.productName || ""}|${row.contractDate ? new Date(row.contractDate).toISOString().split("T")[0] : ""}`;
+        const dupeKey = `${row.customerName || ""}|${row.productName || ""}|${row.userIdentifier || ""}|${row.contractDate ? new Date(row.contractDate).toISOString().split("T")[0] : ""}`;
         let isDuplicate = false;
         if (seen.has(dupeKey)) {
           isDuplicate = true;
@@ -8199,6 +8260,12 @@ export async function registerRoutes(
       const allUsers = await storage.getUsers();
       const customerMap = new Map(existingCustomers.map(c => [c.name, c]));
       const productMap = new Map(existingProducts.map(p => [p.name, p]));
+      let importMappingConfig: Record<string, string> = {};
+      try {
+        importMappingConfig = JSON.parse(batch.mappingConfig || "{}");
+      } catch {
+        importMappingConfig = {};
+      }
 
       const now = new Date();
       const contractPrefix = `BI${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -8258,15 +8325,20 @@ export async function registerRoutes(
               }
             }
 
-            let supplyAmount = row.supplyAmount || 0;
-            let vatAmount = row.vatAmount || 0;
-            const cost = row.cost || 0;
+            let supplyAmount = Number(row.supplyAmount) || 0;
+            let vatAmount = Number(row.vatAmount) || 0;
+            const uploadedCost = Number(row.cost) || 0;
             const rowDays = row.days ? Number(row.days) : 0;
-            const rowQuantity = row.quantity ? Number(row.quantity) : 0;
+            const rawAddQuantity = getBulkImportMappedRawValue(row.rawData, importMappingConfig, "addQuantity");
+            const rawExtendQuantity = getBulkImportMappedRawValue(row.rawData, importMappingConfig, "extendQuantity");
+            const addQuantity = Math.max(0, parseBulkImportInteger(rawAddQuantity, 0));
+            const extendQuantity = Math.max(0, parseBulkImportInteger(rawExtendQuantity, 0));
+            const rowQuantity = addQuantity + extendQuantity > 0
+              ? addQuantity + extendQuantity
+              : Math.max(1, Number(row.quantity) || 1);
 
-            if (supplyAmount === 0 && vatAmount === 0 && cost > 0) {
-              supplyAmount = Math.round(cost / 1.1);
-              vatAmount = cost - supplyAmount;
+            if (supplyAmount === 0 && vatAmount === 0 && uploadedCost > 0) {
+              supplyAmount = uploadedCost;
             }
 
             let workerName = row.workerName || null;
@@ -8285,8 +8357,44 @@ export async function registerRoutes(
             const contractNumber = `${contractPrefix}-${String(importedCount + 1).padStart(4, "0")}`;
             const manager = row.managerName ? allUsers.find(u => u.name === row.managerName) : null;
             const paymentStatusText = row.paymentConfirmed ? String(row.paymentConfirmed).trim() : null;
-            const disbursementStatus = paymentStatusText || (row.disbursementStatus ? String(row.disbursementStatus).trim() : null);
+            const disbursementStatus = row.disbursementStatus
+              ? String(row.disbursementStatus).trim()
+              : paymentStatusText;
             const invoiceIssuedFlag = parseInvoiceIssuedFlag(row.invoiceIssued);
+            const productDetailsVatType = invoiceIssuedFlag === true ? "포함" : "미포함";
+            if (supplyAmount === 0 && row.unitPrice) {
+              supplyAmount = (Number(row.unitPrice) || 0) * rowQuantity;
+            }
+            if (vatAmount === 0 && invoiceIssuedFlag === true && supplyAmount > 0) {
+              vatAmount = Math.round(supplyAmount * 0.1);
+            }
+            const contractCost = supplyAmount;
+            const grossAmount = supplyAmount + vatAmount;
+            const productDetails = row.productName
+              ? [
+                  {
+                    id: "1",
+                    productName: row.productName,
+                    userIdentifier: row.userIdentifier || "",
+                    vatType: productDetailsVatType,
+                    unitPrice: Number(row.unitPrice) || 0,
+                    days: rowDays,
+                    addQuantity,
+                    extendQuantity,
+                    quantity: rowQuantity,
+                    baseDays: rowDays,
+                    worker: workerName || "",
+                    workCost: calculatedWorkCost,
+                    fixedWorkCostAmount: null,
+                    disbursementStatus,
+                    supplyAmount,
+                    grossSupplyAmount: grossAmount,
+                    refundAmount: null,
+                    negativeAdjustmentAmount: null,
+                    marginAmount: supplyAmount - calculatedWorkCost,
+                  },
+                ]
+              : [];
 
             const [contract] = await tx.insert(contracts).values({
               contractNumber,
@@ -8297,9 +8405,11 @@ export async function registerRoutes(
               customerId: customer?.id || null,
               customerName: row.customerName || "",
               products: row.productName || "",
-              cost,
+              cost: contractCost,
               days: rowDays,
               quantity: rowQuantity,
+              addQuantity,
+              extendQuantity,
               paymentConfirmed: isPaymentConfirmed(row.paymentConfirmed),
               paymentMethod: paymentStatusText,
               invoiceIssued: row.invoiceIssued || null,
@@ -8308,6 +8418,7 @@ export async function registerRoutes(
               notes: row.notes || null,
               disbursementStatus,
               userIdentifier: row.userIdentifier || null,
+              productDetailsJson: productDetails.length > 0 ? JSON.stringify(productDetails) : null,
             }).returning();
 
             if (isPaymentConfirmed(row.paymentConfirmed)) {
@@ -8316,7 +8427,7 @@ export async function registerRoutes(
                 depositDate: row.contractDate || now,
                 customerName: row.customerName || "",
                 manager: row.managerName || "",
-                amount: cost,
+                amount: grossAmount || uploadedCost || contractCost,
                 depositConfirmed: true,
                 paymentMethod: paymentStatusText,
                 invoiceIssued: invoiceIssuedFlag === true,
