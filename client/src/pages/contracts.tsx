@@ -941,7 +941,7 @@ export default function ContractsPage() {
   const calculateSupplyAmount = (item: ProductItem) => {
     if (item.supplyAmount !== null && item.supplyAmount !== undefined) {
       const storedSupplyAmount = Number(item.supplyAmount);
-      if (Number.isFinite(storedSupplyAmount) && storedSupplyAmount >= 0) {
+      if (Number.isFinite(storedSupplyAmount)) {
         return storedSupplyAmount;
       }
     }
@@ -1125,7 +1125,7 @@ export default function ContractsPage() {
           productName: String(item.productName || "").trim(),
           userIdentifier: String(item.userIdentifier || "").trim(),
           vatType: normalizeVatType(item.vatType),
-          unitPrice: Math.max(0, Number(item.unitPrice) || 0),
+          unitPrice: Number(item.unitPrice) || 0,
           days: getEffectiveDays(item),
           addQuantity: toNonNegativeInt(item.addQuantity),
           extendQuantity: toNonNegativeInt(item.extendQuantity),
@@ -1140,7 +1140,7 @@ export default function ContractsPage() {
           disbursementStatus: normalizeDisbursementStatus(item.disbursementStatus),
           supplyAmount,
           grossSupplyAmount: hasStoredGrossSupplyAmount && Number.isFinite(storedGrossSupplyAmount)
-            ? Math.max(0, storedGrossSupplyAmount)
+            ? storedGrossSupplyAmount
             : supplyAmount + vatAmount,
           refundAmount: Number.isFinite(storedRefundAmount)
             ? Math.max(0, storedRefundAmount)
@@ -1186,7 +1186,7 @@ export default function ContractsPage() {
                 productName,
                 userIdentifier: String(item.userIdentifier || "").trim(),
                 vatType: normalizeVatType(String(item.vatType ?? snapshot?.vatType ?? product?.vatType ?? "")),
-                unitPrice: Math.max(0, Number(item.unitPrice) || 0),
+                unitPrice: Number(item.unitPrice) || 0,
                 days: viralProduct ? 1 : Math.max(1, Number(item.days) || baseDays || 1),
                 addQuantity,
                 extendQuantity,
@@ -1202,11 +1202,11 @@ export default function ContractsPage() {
                 supplyAmount:
                   item.supplyAmount === null || item.supplyAmount === undefined
                     ? null
-                    : Math.max(0, Number(item.supplyAmount) || 0),
+                    : Number(item.supplyAmount) || 0,
                 grossSupplyAmount:
                   item.grossSupplyAmount === null || item.grossSupplyAmount === undefined
                     ? null
-                    : Math.max(0, Number(item.grossSupplyAmount) || 0),
+                    : Number(item.grossSupplyAmount) || 0,
                 refundAmount:
                   item.refundAmount === null || item.refundAmount === undefined
                     ? null
@@ -1431,7 +1431,7 @@ export default function ContractsPage() {
       return;
     }
 
-    updateProductItem(item.id, field, Math.max(0, parsed));
+    updateProductItem(item.id, field, field === "unitPrice" ? parsed : Math.max(0, parsed));
   };
 
   const handleProductItemNumericInputBlur = (
