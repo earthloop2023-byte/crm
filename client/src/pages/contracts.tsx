@@ -44,7 +44,7 @@ const DEFAULT_CREATE_PAYMENT_METHOD = "입금 전";
 const DEFAULT_CREATE_DEPOSIT_BANK = "하나은행";
 const DEFAULT_CREATE_VAT_TYPE = "포함";
 const CONTRACT_PAYMENT_METHOD_OPTIONS = ["입금 전", "입금확인", "적립금사용", "환불요청", "기타"] as const;
-const CONTRACT_DEPOSIT_BANK_OPTIONS = ["하나은행", "국민은행", "농협은행", "카드 결제", "기타"] as const;
+const CONTRACT_DEPOSIT_BANK_OPTIONS = ["하나은행", "국민은행", "농협은행", "카드결제", "크몽", "기타"] as const;
 
 function AutocompleteInput({ 
   value, 
@@ -1016,8 +1016,8 @@ export default function ContractsPage() {
       return "입금 전";
     }
     if (
-      ["입금확인", "입금완료", "하나", "국민", "농협", "하나은행", "국민은행", "농협은행"].includes(raw) ||
-      ["deposit", "deposited", "banktransfer", "transfer", "confirmed", "hana", "hanabank", "kb", "kookmin", "kbstar", "nonghyup", "nh"].includes(asciiKey)
+      ["입금확인", "입금완료", "하나", "국민", "농협", "하나은행", "국민은행", "농협은행", "크몽"].includes(raw) ||
+      ["deposit", "deposited", "banktransfer", "transfer", "confirmed", "hana", "hanabank", "kb", "kookmin", "kbstar", "nonghyup", "nh", "kmong"].includes(asciiKey)
     ) {
       return "입금확인";
     }
@@ -1060,7 +1060,13 @@ export default function ContractsPage() {
       ["카드 결제", "카드결제"].includes(raw) ||
       ["card", "cardpayment", "creditcard"].includes(asciiKey)
     ) {
-      return "카드 결제";
+      return "카드결제";
+    }
+    if (
+      ["크몽"].includes(raw) ||
+      ["kmong"].includes(asciiKey)
+    ) {
+      return "크몽";
     }
     if (raw === "기타" || asciiKey === "other") {
       return "기타";
@@ -1928,8 +1934,8 @@ export default function ContractsPage() {
       return "입금 전";
     }
     if (
-      ["입금확인", "입금완료", "하나", "국민", "농협", "하나은행", "국민은행", "농협은행"].includes(raw) ||
-      ["deposit", "deposited", "banktransfer", "transfer", "confirmed", "hana", "hanabank", "kb", "kookmin", "kbstar", "nonghyup", "nh"].includes(asciiKey)
+      ["입금확인", "입금완료", "하나", "국민", "농협", "하나은행", "국민은행", "농협은행", "크몽"].includes(raw) ||
+      ["deposit", "deposited", "banktransfer", "transfer", "confirmed", "hana", "hanabank", "kb", "kookmin", "kbstar", "nonghyup", "nh", "kmong"].includes(asciiKey)
     ) {
       return "입금확인";
     }

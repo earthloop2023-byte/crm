@@ -1148,7 +1148,8 @@ function normalizeContractPaymentMethod(value: unknown): string {
     normalized === "하나은행" ||
     normalized === "국민은행" ||
     normalized === "농협은행" ||
-    ["deposit", "deposited", "banktransfer", "transfer", "confirmed", "hana", "hanabank", "kb", "kookmin", "kbstar", "nonghyup", "nh"].includes(asciiKey)
+    normalized === "크몽" ||
+    ["deposit", "deposited", "banktransfer", "transfer", "confirmed", "hana", "hanabank", "kb", "kookmin", "kbstar", "nonghyup", "nh", "kmong"].includes(asciiKey)
   ) {
     return PAYMENT_METHOD_DEPOSIT_CONFIRMED;
   }
@@ -1190,7 +1191,13 @@ function normalizeContractDepositBank(value: unknown, fallbackPaymentMethod?: un
     normalized === "카드 결제" ||
     ["card", "cardpayment", "creditcard"].includes(asciiKey)
   ) {
-    return "카드 결제";
+    return "카드결제";
+  }
+  if (
+    normalized === "크몽" ||
+    ["kmong"].includes(asciiKey)
+  ) {
+    return "크몽";
   }
   if (normalized === "기타" || asciiKey === "other") {
     return "기타";

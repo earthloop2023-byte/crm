@@ -35,6 +35,31 @@ type MatchProductItem = {
   quantity?: number;
 };
 
+const DEFAULT_DEPOSIT_BANK = "하나은행";
+const DEPOSIT_BANK_OPTIONS = ["하나은행", "국민은행", "농협은행", "카드결제", "크몽", "기타"] as const;
+const DEPOSIT_BANK_OPTION_SET = new Set<string>(DEPOSIT_BANK_OPTIONS);
+
+function normalizeDepositBankOption(value: unknown, fallback = DEFAULT_DEPOSIT_BANK) {
+  const raw = String(value ?? "").trim();
+  const normalized = raw.replace(/\s+/g, "");
+  const asciiKey = normalized.replace(/[_-]/g, "").toLowerCase();
+
+  if (!normalized) return fallback;
+  if (["하나", "하나은행"].includes(normalized) || ["hana", "hanabank"].includes(asciiKey)) return "하나은행";
+  if (["국민", "국민은행"].includes(normalized) || ["kb", "kookmin", "kbstar"].includes(asciiKey)) return "국민은행";
+  if (["농협", "농협은행"].includes(normalized) || ["nonghyup", "nh"].includes(asciiKey)) return "농협은행";
+  if (["카드결제"].includes(normalized) || ["card", "cardpayment", "creditcard"].includes(asciiKey)) return "카드결제";
+  if (["크몽"].includes(normalized) || ["kmong"].includes(asciiKey)) return "크몽";
+  if (normalized === "기타" || asciiKey === "other") return "기타";
+  return DEPOSIT_BANK_OPTION_SET.has(raw) ? raw : fallback;
+}
+
+function getDepositBankDisplayLabel(value: unknown) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "-";
+  return normalizeDepositBankOption(raw, "") || raw;
+}
+
 export default function DepositConfirmationsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -67,7 +92,7 @@ export default function DepositConfirmationsPage() {
   const [formDepositDate, setFormDepositDate] = useState("");
   const [formDepositorName, setFormDepositorName] = useState("");
   const [formDepositAmount, setFormDepositAmount] = useState("");
-  const [formDepositBank, setFormDepositBank] = useState("");
+  const [formDepositBank, setFormDepositBank] = useState(DEFAULT_DEPOSIT_BANK);
   const [formNotes, setFormNotes] = useState("");
   const [notesViewOpen, setNotesViewOpen] = useState(false);
   const [viewingNotes, setViewingNotes] = useState("");
@@ -328,7 +353,7 @@ export default function DepositConfirmationsPage() {
     setFormDepositDate("");
     setFormDepositorName("");
     setFormDepositAmount("");
-    setFormDepositBank("");
+    setFormDepositBank(DEFAULT_DEPOSIT_BANK);
     setFormNotes("");
   };
 
@@ -356,7 +381,7 @@ export default function DepositConfirmationsPage() {
       depositDate: formDepositDate,
       depositorName: formDepositorName.trim(),
       depositAmount: Number(formDepositAmount.replace(/[,원]/g, "")) || 0,
-      depositBank: formDepositBank.trim(),
+      depositBank: normalizeDepositBankOption(formDepositBank),
       notes: formNotes.trim(),
     });
   };
@@ -494,7 +519,7 @@ export default function DepositConfirmationsPage() {
     setEditDepositDate(toDateInputValue(deposit.depositDate));
     setEditDepositorName(String(deposit.depositorName || ""));
     setEditDepositAmount(String(deposit.depositAmount ?? 0));
-    setEditDepositBank(String(deposit.depositBank || ""));
+    setEditDepositBank(normalizeDepositBankOption(deposit.depositBank));
     setEditNotes(String(deposit.notes || ""));
     setEditDialogOpen(true);
   };
@@ -514,7 +539,7 @@ export default function DepositConfirmationsPage() {
       depositDate: editDepositDate,
       depositorName: editDepositorName.trim(),
       depositAmount: Number(editDepositAmount.replace(/[,\s]/g, "")) || 0,
-      depositBank: editDepositBank.trim(),
+      depositBank: normalizeDepositBankOption(editDepositBank),
       notes: editNotes.trim(),
     });
   };
@@ -901,7 +926,7 @@ export default function DepositConfirmationsPage() {
                           />
                         </TableCell>
                         <TableCell className="text-xs whitespace-nowrap text-center">{formatDate(deposit.depositDate)}</TableCell>
-                        <TableCell className="text-xs whitespace-nowrap font-medium text-center">{deposit.depositBank || "-"}</TableCell>
+                        <TableCell className="text-xs whitespace-nowrap font-medium text-center">{getDepositBankDisplayLabel(deposit.depositBank)}</TableCell>
                         <TableCell className="text-xs whitespace-nowrap font-medium text-center">{formatAmount(deposit.depositAmount)}원</TableCell>
                         <TableCell className="text-xs whitespace-nowrap font-medium text-center">{deposit.depositorName}</TableCell>
                         <TableCell className="text-xs whitespace-nowrap font-medium text-center">
@@ -1340,19 +1365,18 @@ export default function DepositConfirmationsPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="reg-deposit-bank">입금은행</Label>
-              <Input
-                id="reg-deposit-bank"
-                type="text"
-                placeholder="입금은행을 입력하세요"
-                value={formDepositBank}
-                onChange={(e) => setFormDepositBank(e.target.value)}
-                onInput={(e) => setFormDepositBank((e.target as HTMLInputElement).value)}
-                autoComplete="off"
-                inputMode="text"
-                spellCheck={false}
-                className="rounded-none"
-                data-testid="input-reg-deposit-bank"
-              />
+              <Select value={formDepositBank || DEFAULT_DEPOSIT_BANK} onValueChange={setFormDepositBank}>
+                <SelectTrigger id="reg-deposit-bank" className="rounded-none" data-testid="select-reg-deposit-bank">
+                  <SelectValue placeholder="입금은행 선택" />
+                </SelectTrigger>
+                <SelectContent className="rounded-none">
+                  {DEPOSIT_BANK_OPTIONS.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {option}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="reg-deposit-amount">입금금액</Label>
@@ -1456,18 +1480,18 @@ export default function DepositConfirmationsPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-deposit-bank">입금은행</Label>
-              <Input
-                id="edit-deposit-bank"
-                type="text"
-                value={editDepositBank}
-                onChange={(e) => setEditDepositBank(e.target.value)}
-                onInput={(e) => setEditDepositBank((e.target as HTMLInputElement).value)}
-                autoComplete="off"
-                inputMode="text"
-                spellCheck={false}
-                className="rounded-none"
-                data-testid="input-edit-deposit-bank"
-              />
+              <Select value={editDepositBank || DEFAULT_DEPOSIT_BANK} onValueChange={setEditDepositBank}>
+                <SelectTrigger id="edit-deposit-bank" className="rounded-none" data-testid="select-edit-deposit-bank">
+                  <SelectValue placeholder="입금은행 선택" />
+                </SelectTrigger>
+                <SelectContent className="rounded-none">
+                  {DEPOSIT_BANK_OPTIONS.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {option}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-deposit-amount">입금금액</Label>
