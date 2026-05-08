@@ -183,7 +183,7 @@ function buildContractKey({ dateKey, customerName, productName, quantity, cost, 
 function resolveExcelPath(cliPath) {
   if (cliPath && fs.existsSync(cliPath)) return cliPath;
 
-  const downloadsDir = path.join(process.env.USERPROFILE || "C:\\Users\\induk", "Downloads");
+  const downloadsDir = path.join(process.env.USERPROFILE || "C:\\Users\\earthloop", "Downloads");
   const allFiles = fs
     .readdirSync(downloadsDir)
     .filter((name) => name.toLowerCase().endsWith(".xlsx") && !name.startsWith("~$"))
@@ -193,7 +193,7 @@ function resolveExcelPath(cliPath) {
       return bStat.mtimeMs - aStat.mtimeMs;
     });
 
-  const preferred = allFiles.find((name) => name.includes("월보장") && name.includes("인덕"));
+  const preferred = allFiles.find((name) => name.includes("월보장") && name.includes("어스루프"));
   if (preferred) return path.join(downloadsDir, preferred);
 
   const fallback = allFiles.find((name) => name.includes("월보장"));

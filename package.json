@@ -1,5 +1,5 @@
 {
-  "name": "rest-express",
+  "name": "earthloopcrm",
   "version": "1.0.0",
   "type": "module",
   "license": "MIT",
@@ -14,6 +14,9 @@
     "db:restore:file": "node scripts/db-restore.mjs",
     "db:backup:json": "node scripts/db-backup-json.mjs",
     "db:restore:json": "node scripts/restore-backup-json.mjs",
+    "db:rebrand-earthloop:dry": "node scripts/rebrand-earthloop-data.mjs",
+    "db:rebrand-earthloop:apply": "node scripts/rebrand-earthloop-data.mjs --apply",
+    "db:reset-earthloop-admin": "node scripts/reset-earthloop-admin.mjs",
     "db:pii:encrypt:dry": "node scripts/migrate-pii-encryption.mjs",
     "db:pii:encrypt:apply": "node scripts/migrate-pii-encryption.mjs --apply",
     "db:import:final-dataset": "node scripts/import-final-dataset.mjs",

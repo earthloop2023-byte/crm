@@ -4,7 +4,7 @@ import path from "node:path";
 function parseArgs(argv) {
   const args = {
     planDir: "",
-    baseUrl: "https://induk-crm.cloud",
+    baseUrl: "https://earthloopcrm.cloud",
     loginJson: path.resolve("login.json"),
     outputDir: path.resolve("deliverables", "apr10_contract_apply"),
     apply: false,

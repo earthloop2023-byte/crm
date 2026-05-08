@@ -1,5 +1,5 @@
 param(
-  [string]$KeyPath = "C:\Users\induk\Desktop\pemkey\crm-key.pem",
+  [string]$KeyPath = "C:\Users\earthloop\Desktop\pemkey\crm-key.pem",
   [string]$RemoteHost = "ubuntu@54.180.39.208",
   [string]$RemoteReleaseFile = "/opt/crm/site1/deploy/current-release.json"
 )

@@ -16,7 +16,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 const defaultSettings: Record<string, string> = {
-  company_name: "바이럴매직",
+  company_name: "어스루프",
   company_address: "",
   company_phone: "",
   company_email: "",

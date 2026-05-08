@@ -21,7 +21,7 @@ interface SystemSettings {
 }
 
 const defaultSettings: SystemSettings = {
-  company_name: "바이럴매직",
+  company_name: "어스루프",
   company_address: "",
   company_phone: "",
   company_email: "",

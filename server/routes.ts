@@ -214,6 +214,7 @@ async function ensureCustomerDetailTables() {
 async function ensureDealCustomerDbColumns() {
   await pool.query(`
     ALTER TABLE deals
+    ADD COLUMN IF NOT EXISTS parent_deal_id varchar,
     ADD COLUMN IF NOT EXISTS inbound_date timestamp,
     ADD COLUMN IF NOT EXISTS contract_start_date timestamp,
     ADD COLUMN IF NOT EXISTS contract_end_date timestamp,
@@ -380,7 +381,8 @@ async function ensureFinancialHistoryColumns() {
     ADD COLUMN IF NOT EXISTS days integer DEFAULT 0,
     ADD COLUMN IF NOT EXISTS add_quantity integer DEFAULT 0,
     ADD COLUMN IF NOT EXISTS extend_quantity integer DEFAULT 0,
-    ADD COLUMN IF NOT EXISTS target_amount integer DEFAULT 0
+    ADD COLUMN IF NOT EXISTS target_amount integer DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS refund_status text
   `);
   await pool.query(`
     ALTER TABLE keeps
@@ -391,7 +393,10 @@ async function ensureFinancialHistoryColumns() {
     ADD COLUMN IF NOT EXISTS days integer DEFAULT 0,
     ADD COLUMN IF NOT EXISTS add_quantity integer DEFAULT 0,
     ADD COLUMN IF NOT EXISTS extend_quantity integer DEFAULT 0,
-    ADD COLUMN IF NOT EXISTS target_amount integer DEFAULT 0
+    ADD COLUMN IF NOT EXISTS target_amount integer DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS keep_status text,
+    ADD COLUMN IF NOT EXISTS decision_by text,
+    ADD COLUMN IF NOT EXISTS decision_at timestamp
   `);
 }
 

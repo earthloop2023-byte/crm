@@ -1,6 +1,6 @@
 const baseUrl = (process.env.SMOKE_BASE_URL || "http://127.0.0.1:5001").replace(/\/+$/, "");
 const loginId = process.env.SMOKE_LOGIN_ID || "admin";
-const password = process.env.SMOKE_LOGIN_PASSWORD || "a1234";
+const password = process.env.SMOKE_LOGIN_PASSWORD || "aa12345";
 
 const cookieJar = new Map();
 

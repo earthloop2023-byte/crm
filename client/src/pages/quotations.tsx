@@ -134,7 +134,7 @@ function getInitialFormData(): QuotationFormData {
     projectName: "",
     bankType: "bank1",
     productGroups: [{ ...emptyProductGroup, subGroups: [{ ...emptySubGroup, lines: [{ ...emptyLine }] }] }],
-    notes: "1. 귀사의 무궁한 발전을 기원합니다.\n2. 본 견적서는 견적일로부터 14일간 유효합니다.\n3. 포털사이트(네이버/인스타그램) 로직 변경시, 작업 방식에 일부 변경될 수 있습니다.\n4. 프로젝트 종료 해지 시, 잔사 환불은 요금에 따라 위약금이 발생할 수 있습니다.\n5. 프로젝트 결과물을 주식회사 인덕의 포트폴리오 자료로 활용될 수 있습니다.",
+    notes: "1. 귀사의 무궁한 발전을 기원합니다.\n2. 본 견적서는 견적일로부터 14일간 유효합니다.\n3. 포털사이트(네이버/인스타그램) 로직 변경시, 작업 방식에 일부 변경될 수 있습니다.\n4. 프로젝트 종료 해지 시, 잔사 환불은 요금에 따라 위약금이 발생할 수 있습니다.\n5. 프로젝트 결과물을 주식회사 어스루프의 포트폴리오 자료로 활용될 수 있습니다.",
   };
 }
 
@@ -401,7 +401,7 @@ export default function QuotationsPage() {
 
     const bt = q.bankType || "bank1";
     const prefix = bt === "bank2" ? "bank2" : "bank1";
-    const supplierName = settings[`${prefix}_supplier_name`] || settings.company_name || "INDUK";
+    const supplierName = settings[`${prefix}_supplier_name`] || settings.company_name || "EARTHLOOP";
     const supplierBusinessNum = settings[`${prefix}_supplier_business_number`] || settings.company_business_number || "";
     const supplierCeo = settings[`${prefix}_supplier_ceo`] || settings.company_ceo || "";
     const bankName = settings[`${prefix}_name`] || "";
